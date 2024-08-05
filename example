@@ -1,0 +1,140 @@
+import matplotlib.pyplot as plt
+import csv
+import time
+
+# Initialize lists to store data
+time_data = []
+roll_data = []
+pitch_data = []
+avg_roll = []
+avg_pitch = []
+
+# Initialize lists to store points with significant differences
+diff_roll_indices = []
+diff_roll_values = []
+diff_pitch_indices = []
+diff_pitch_values = []
+
+# Set a difference threshold
+DIFFERENCE_THRESHOLD = 5.0
+
+# Set up the plot
+plt.ion()  # Enable interactive mode
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 8))
+
+# Initialize the lines for each subplot
+line1, = ax1.plot([], [], 'r-', label='Average Roll')  # Average Roll plot line
+line2, = ax2.plot([], [], 'g-', label='Average Pitch')  # Average Pitch plot line
+line3, = ax3.plot([], [], 'b-', label='Live Roll')  # Live Roll plot line
+line4, = ax4.plot([], [], 'm-', label='Live Pitch')  # Live Pitch plot line
+
+# Initialize scatter plots for significant differences
+scat1 = ax3.scatter([], [], color='orange', label='Significant Difference')  # Roll differences
+scat2 = ax4.scatter([], [], color='orange', label='Significant Difference')  # Pitch differences
+
+# Set plot limits and labels
+ax1.set_title("Average Roll")
+ax1.set_xlabel("Time")
+ax1.set_ylabel("Value")
+
+ax2.set_title("Average Pitch")
+ax2.set_xlabel("Time")
+ax2.set_ylabel("Value")
+
+ax3.set_title("Live Roll")
+ax3.set_xlabel("Time")
+ax3.set_ylabel("Value")
+
+ax4.set_title("Live Pitch")
+ax4.set_xlabel("Time")
+ax4.set_ylabel("Value")
+
+# Read initial average data from CSV
+try:
+    with open('average_path.csv', 'r') as f:
+        r = csv.reader(f)
+        for ii in r:
+            avg_roll.append(float(ii[0]))
+            avg_pitch.append(float(ii[1]))
+except FileNotFoundError:
+    print("Average path file not found.")
+
+# Plot average data
+if avg_roll and avg_pitch:
+    line1.set_data(range(len(avg_roll)), avg_roll)
+    line2.set_data(range(len(avg_pitch)), avg_pitch)
+    ax1.set_xlim(0, len(avg_roll))
+    ax1.set_ylim(min(avg_roll) - 5, max(avg_roll) + 5)
+    ax2.set_xlim(0, len(avg_pitch))
+    ax2.set_ylim(min(avg_pitch) - 5, max(avg_pitch) + 5)
+
+# Start time for x-axis
+start_time = time.time()
+
+try:
+    while True:
+        with open('average_path.csv', 'r') as f:
+            r = csv.reader(f)
+            roll = []
+            pitch = []
+            for ii in r:
+                roll.append(float(ii[0]))
+                pitch.append(float(ii[1]))
+
+        # Get current time
+        current_time = time.time() - start_time
+
+        # Append new data to lists
+        time_data.append(current_time)
+        roll_data.append(roll[-1])
+        pitch_data.append(pitch[-1])
+
+        # Check for significant differences
+        if len(avg_roll) > len(roll_data):
+            avg_roll_segment = avg_roll[-len(roll_data):]
+            avg_pitch_segment = avg_pitch[-len(pitch_data):]
+        else:
+            avg_roll_segment = avg_roll
+            avg_pitch_segment = avg_pitch
+
+        # Compare latest roll and pitch data with the average data
+        for i in range(len(roll_data)):
+            if i < len(avg_roll_segment):
+                if abs(roll_data[i] - avg_roll_segment[i]) > DIFFERENCE_THRESHOLD:
+                    diff_roll_indices.append(time_data[i])
+                    diff_roll_values.append(roll_data[i])
+                if abs(pitch_data[i] - avg_pitch_segment[i]) > DIFFERENCE_THRESHOLD:
+                    diff_pitch_indices.append(time_data[i])
+                    diff_pitch_values.append(pitch_data[i])
+
+        # Update live plot data
+        line3.set_xdata(time_data)
+        line3.set_ydata(roll_data)
+        line4.set_xdata(time_data)
+        line4.set_ydata(pitch_data)
+
+        # Update scatter plots for significant differences
+        scat1.set_offsets(list(zip(diff_roll_indices, diff_roll_values)))
+        scat2.set_offsets(list(zip(diff_pitch_indices, diff_pitch_values)))
+
+        # Adjust the plot limits dynamically
+        ax3.relim()
+        ax3.autoscale_view()
+        ax4.relim()
+        ax4.autoscale_view()
+
+        plt.draw()  # Redraw the current figure
+        plt.pause(0.1)  # Pause to allow the plot to update
+
+        # Optional: Trim data to keep the plot within certain size limits
+        if len(time_data) > 100:
+            time_data.pop(0)
+            roll_data.pop(0)
+            pitch_data.pop(0)
+
+        time.sleep(1)  # Adjust sleep time as necessary
+
+except KeyboardInterrupt:
+    print("Live plotting stopped.")
+    plt.ioff()  # Disable interactive mode
+    plt.show()  # Keep the plot open after the loop ends
