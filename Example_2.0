@@ -1,0 +1,103 @@
+import matplotlib.pyplot as plt
+import csv
+import time
+
+# Initialize lists to store data
+time_data = []
+roll_data = []
+pitch_data = []
+avg_roll = []
+avg_pitch = []
+
+# Set up the plot
+plt.style.use('fivethirtyeight')
+plt.ion()  # Enable interactive mode
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+
+# Initialize the lines for each subplot
+line1, = ax1.plot([], [], 'r-', label='Average Roll')  # Average Roll plot line
+line2, = ax2.plot([], [], 'g-', label='Average Pitch')  # Average Pitch plot line
+line3, = ax3.plot([], [], 'b-', label='Live Roll')  # Live Roll plot line
+line4, = ax4.plot([], [], 'm-', label='Live Pitch')  # Live Pitch plot line
+
+# Set plot limits and labels
+ax1.set_title("Average Roll")
+ax1.set_xlabel("Time")
+ax1.set_ylabel("Value")
+
+ax2.set_title("Average Pitch")
+ax2.set_xlabel("Time")
+ax2.set_ylabel("Value")
+
+ax3.set_title("Live Roll")
+ax3.set_xlabel("Time")
+ax3.set_ylabel("Value")
+
+ax4.set_title("Live Pitch")
+ax4.set_xlabel("Time")
+ax4.set_ylabel("Value")
+
+# Read initial average data from CSV
+try:
+    with open('average_path.csv', 'r') as f:
+        r = csv.reader(f)
+        for ii in r:
+            avg_roll.append(float(ii[0]))
+            avg_pitch.append(float(ii[1]))
+except FileNotFoundError:
+    print("Average path file not found.")
+
+# Plot average data
+if avg_roll and avg_pitch:
+    line1.set_data(range(len(avg_roll)), avg_roll)
+    line2.set_data(range(len(avg_pitch)), avg_pitch)
+    ax1.set_xlim(0, len(avg_roll))
+    ax1.set_ylim(min(avg_roll) - 5, max(avg_roll) + 5)
+    ax2.set_xlim(0, len(avg_pitch))
+    ax2.set_ylim(min(avg_pitch) - 5, max(avg_pitch) + 5)
+
+# Start time for x-axis
+start_time = time.time()
+
+try:
+    while True:
+        with open('output_data.csv', 'r') as f:
+            r = csv.reader(f)
+            roll = []
+            pitch = []
+            for ii in r:
+                roll.append(float(ii[0]))
+                pitch.append(float(ii[1]))
+
+        # Get current time
+        current_time = time.time() - start_time
+
+        # Append new data to lists
+        time_data.append(current_time)
+        roll_data.append(roll[-1])
+        pitch_data.append(pitch[-1])
+
+        # Update live plot data
+        line3.set_xdata(time_data)
+        line3.set_ydata(roll_data)
+        line4.set_xdata(time_data)
+        line4.set_ydata(pitch_data)
+
+        # Adjust the plot limits dynamically
+        ax3.relim()
+        ax3.autoscale_view()
+        ax4.relim()
+        ax4.autoscale_view()
+
+        plt.draw()  # Redraw the current figure
+        plt.pause(0.01)  # Pause to allow the plot to update
+
+        # Optional: Trim data to keep the plot within certain size limits
+
+
+        time.sleep(1)  # Adjust sleep time as necessary
+
+except KeyboardInterrupt:
+    print("Live plotting stopped.")
+    plt.ioff()  # Disable interactive mode
+    plt.show()  # Keep the plot open after the loop ends
